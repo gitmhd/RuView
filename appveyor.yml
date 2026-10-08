@@ -2,29 +2,39 @@ image: Visual Studio 2022
 
 install:
   - ps: |
-      # Download rustup installer
+      # 1. Download official rustup-init
       Invoke-WebRequest -Uri "https://win.rustup.rs/x86_64" -OutFile "rustup-init.exe"
       
-      # Run silent installation
+      # 2. Run headless Rust install
       .\rustup-init.exe -y --default-toolchain stable --profile minimal
       
-      # Add Cargo bin to PATH for this script session
+      # 3. Add to PATH and verify
       $env:PATH = "C:\Users\appveyor\.cargo\bin;$env:PATH"
-      
-      # Verify installation
       rustc -vV
       cargo -vV
 
 build_script:
   - ps: |
       $env:PATH = "C:\Users\appveyor\.cargo\bin;$env:PATH"
-      cargo build --release --bin sensing-server
+      
+      # Enter the v2 workspace directory where Cargo.toml lives
+      Set-Location "C:\projects\ruview\v2"
+      
+      # Build the sensing server binary
+      cargo build --release -p wifi-densepose-sensing-server --bin sensing-server
 
 after_build:
   - ps: |
-      New-Item -ItemType Directory -Path dist
-      Copy-Item "target\release\sensing-server.exe" -Destination "dist\"
+      Set-Location "C:\projects\ruview"
+      
+      # Create deployment folder
+      New-Item -ItemType Directory -Path dist -Force
+      
+      # Copy compiled binary and UI assets
+      Copy-Item "v2\target\release\sensing-server.exe" -Destination "dist\"
       Copy-Item -Recurse "ui" -Destination "dist\ui"
+      
+      # Archive everything into a zip file
       Compress-Archive -Path dist\* -DestinationPath ruview-windows-x64.zip
 
 artifacts:
