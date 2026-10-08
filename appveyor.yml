@@ -1,22 +1,26 @@
 image: Visual Studio 2022
 
-environment:
-  RUST_VERSION: stable
-
 install:
-  # Install Rust toolchain on the AppVeyor Windows worker
   - ps: |
-      $env:PATH += ";C:\Users\appveyor\.cargo\bin"
-      rustup-init.exe -y --default-toolchain stable
+      # Download rustup installer
+      Invoke-WebRequest -Uri "https://win.rustup.rs/x86_64" -OutFile "rustup-init.exe"
+      
+      # Run silent installation
+      .\rustup-init.exe -y --default-toolchain stable --profile minimal
+      
+      # Add Cargo bin to PATH for this script session
+      $env:PATH = "C:\Users\appveyor\.cargo\bin;$env:PATH"
+      
+      # Verify installation
       rustc -vV
       cargo -vV
 
 build_script:
-  # Compile sensing-server in release mode
-  - cargo build --release --bin sensing-server
+  - ps: |
+      $env:PATH = "C:\Users\appveyor\.cargo\bin;$env:PATH"
+      cargo build --release --bin sensing-server
 
 after_build:
-  # Bundle the binary and UI assets into a clean folder
   - ps: |
       New-Item -ItemType Directory -Path dist
       Copy-Item "target\release\sensing-server.exe" -Destination "dist\"
