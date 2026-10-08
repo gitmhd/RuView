@@ -1,14 +1,17 @@
 image: Visual Studio 2022
 
+# Enable recursive git submodule checkout
 install:
   - ps: |
-      # 1. Download official rustup-init
-      Invoke-WebRequest -Uri "https://win.rustup.rs/x86_64" -OutFile "rustup-init.exe"
+      # 1. Pull all git submodules (required for vendor/rufield)
+      Set-Location "C:\projects\ruview"
+      git submodule update --init --recursive
       
-      # 2. Run headless Rust install
+      # 2. Download and install Rust toolchain
+      Invoke-WebRequest -Uri "https://win.rustup.rs/x86_64" -OutFile "rustup-init.exe"
       .\rustup-init.exe -y --default-toolchain stable --profile minimal
       
-      # 3. Add to PATH and verify
+      # 3. Add Cargo to PATH and verify
       $env:PATH = "C:\Users\appveyor\.cargo\bin;$env:PATH"
       rustc -vV
       cargo -vV
@@ -17,24 +20,22 @@ build_script:
   - ps: |
       $env:PATH = "C:\Users\appveyor\.cargo\bin;$env:PATH"
       
-      # Enter the v2 workspace directory where Cargo.toml lives
+      # Enter the v2 workspace directory
       Set-Location "C:\projects\ruview\v2"
       
-      # Build the sensing server binary
+      # Build sensing-server in release mode
       cargo build --release -p wifi-densepose-sensing-server --bin sensing-server
 
 after_build:
   - ps: |
       Set-Location "C:\projects\ruview"
       
-      # Create deployment folder
+      # Create dist package
       New-Item -ItemType Directory -Path dist -Force
-      
-      # Copy compiled binary and UI assets
       Copy-Item "v2\target\release\sensing-server.exe" -Destination "dist\"
       Copy-Item -Recurse "ui" -Destination "dist\ui"
       
-      # Archive everything into a zip file
+      # Compress package
       Compress-Archive -Path dist\* -DestinationPath ruview-windows-x64.zip
 
 artifacts:
