@@ -1,0 +1,28 @@
+image: Visual Studio 2022
+
+environment:
+  RUST_VERSION: stable
+
+install:
+  # Install Rust toolchain on the AppVeyor Windows worker
+  - ps: |
+      $env:PATH += ";C:\Users\appveyor\.cargo\bin"
+      rustup-init.exe -y --default-toolchain stable
+      rustc -vV
+      cargo -vV
+
+build_script:
+  # Compile sensing-server in release mode
+  - cargo build --release --bin sensing-server
+
+after_build:
+  # Bundle the binary and UI assets into a clean folder
+  - ps: |
+      New-Item -ItemType Directory -Path dist
+      Copy-Item "target\release\sensing-server.exe" -Destination "dist\"
+      Copy-Item -Recurse "ui" -Destination "dist\ui"
+      Compress-Archive -Path dist\* -DestinationPath ruview-windows-x64.zip
+
+artifacts:
+  - path: ruview-windows-x64.zip
+    name: ruview-release
