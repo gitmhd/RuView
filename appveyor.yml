@@ -1,42 +1,27 @@
 image: Visual Studio 2022
 
-# Enable recursive git submodule checkout
 install:
   - ps: |
-      # 1. Pull all git submodules (required for vendor/rufield)
+      $ProgressPreference = 'SilentlyContinue'
       Set-Location "C:\projects\ruview"
-      git submodule update --init --recursive
-      
-      # 2. Download and install Rust toolchain
+      git submodule update --init --recursive --depth 1
       Invoke-WebRequest -Uri "https://win.rustup.rs/x86_64" -OutFile "rustup-init.exe"
       .\rustup-init.exe -y --default-toolchain stable --profile minimal
-      
-      # 3. Add Cargo to PATH and verify
-      $env:PATH = "C:\Users\appveyor\.cargo\bin;$env:PATH"
-      rustc -vV
-      cargo -vV
 
 build_script:
-  - ps: |
-      $env:PATH = "C:\Users\appveyor\.cargo\bin;$env:PATH"
-      
-      # Enter the v2 workspace directory
-      Set-Location "C:\projects\ruview\v2"
-      
-      # Build sensing-server in release mode
+  - cmd: |
+      set PATH=C:\Users\appveyor\.cargo\bin;%PATH%
+      cd C:\projects\ruview\v2
       cargo build --release -p wifi-densepose-sensing-server --bin sensing-server
 
 after_build:
-  - ps: |
-      Set-Location "C:\projects\ruview"
-      
-      # Create dist package
-      New-Item -ItemType Directory -Path dist -Force
-      Copy-Item "v2\target\release\sensing-server.exe" -Destination "dist\"
-      Copy-Item -Recurse "ui" -Destination "dist\ui"
-      
-      # Compress package
-      Compress-Archive -Path dist\* -DestinationPath ruview-windows-x64.zip
+  - cmd: |
+      cd C:\projects\ruview
+      if not exist dist mkdir dist
+      copy /Y v2\target\release\sensing-server.exe dist\
+      if exist ui xcopy /E /I /Y ui dist\ui
+      if exist v2\ui xcopy /E /I /Y v2\ui dist\ui
+      powershell -NoProfile -Command "Compress-Archive -Path dist\* -DestinationPath ruview-windows-x64.zip -Force"
 
 artifacts:
   - path: ruview-windows-x64.zip
