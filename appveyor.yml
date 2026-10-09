@@ -1,12 +1,11 @@
 image: Visual Studio 2022
 
 install:
-  - ps: |
-      $ProgressPreference = 'SilentlyContinue'
-      Set-Location "C:\projects\ruview"
+  - cmd: |
+      cd C:\projects\ruview
       git submodule update --init --recursive --depth 1
-      Invoke-WebRequest -Uri "https://win.rustup.rs/x86_64" -OutFile "rustup-init.exe"
-      .\rustup-init.exe -y --default-toolchain stable --profile minimal
+      curl -sSf -o rustup-init.exe https://win.rustup.rs/x86_64
+      rustup-init.exe -y --default-toolchain stable --profile minimal
 
 build_script:
   - cmd: |
@@ -21,7 +20,7 @@ after_build:
       copy /Y v2\target\release\sensing-server.exe dist\
       if exist ui xcopy /E /I /Y ui dist\ui
       if exist v2\ui xcopy /E /I /Y v2\ui dist\ui
-      powershell -NoProfile -Command "Compress-Archive -Path dist\* -DestinationPath ruview-windows-x64.zip -Force"
+      tar -a -c -f ruview-windows-x64.zip dist
 
 artifacts:
   - path: ruview-windows-x64.zip
